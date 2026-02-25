@@ -1,2 +1,1 @@
-# de-pr-labtry bypass
-bypass-check
+# de-pr-lab
