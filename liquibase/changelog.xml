@@ -19,4 +19,12 @@
     </rollback>
   </changeSet>
 
+
+  <changeSet id="003-add-index-created-at" author="lab">
+    <sqlFile path="migrations/003_add_index_created_at.sql" relativeToChangelogFile="false"/>
+    <rollback>
+      <sql>DROP INDEX IF EXISTS idx_users_created_at;</sql>
+    </rollback>
+  </changeSet>
+
 </databaseChangeLog>
