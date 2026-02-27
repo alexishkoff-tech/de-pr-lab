@@ -1,0 +1,66 @@
+name: db-cd
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy_staging:
+    name: Deploy DB to staging
+    runs-on: self-hosted
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download PostgreSQL JDBC driver
+        run: |
+          mkdir -p lib
+          curl -L -o lib/postgresql.jar \
+            https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar
+
+      - name: Liquibase validate
+        run: |
+          docker run --rm --network "${{ secrets.DOCKER_NETWORK }}" \
+            -v "${{ github.workspace }}:/workspace" -w /workspace \
+            liquibase/liquibase:latest \
+            --classpath=/workspace/lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url="${{ secrets.DB_URL }}" \
+            --username="${{ secrets.DB_USER }}" --password="${{ secrets.DB_PASSWORD }}" \
+            validate
+
+      - name: Liquibase update (apply migrations)
+        run: |
+          docker run --rm --network "${{ secrets.DOCKER_NETWORK }}" \
+            -v "${{ github.workspace }}:/workspace" -w /workspace \
+            liquibase/liquibase:latest \
+            --classpath=/workspace/lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url="${{ secrets.DB_URL }}" \
+            --username="${{ secrets.DB_USER }}" --password="${{ secrets.DB_PASSWORD }}" \
+            update
+
+  deploy_prod:
+    name: Deploy DB to prod
+    runs-on: self-hosted
+    needs: deploy_staging
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download PostgreSQL JDBC driver
+        run: |
+          mkdir -p lib
+          curl -L -o lib/postgresql.jar \
+            https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar
+
+      - name: Liquibase update (apply migrations)
+        run: |
+          docker run --rm --network "${{ secrets.DOCKER_NETWORK }}" \
+            -v "${{ github.workspace }}:/workspace" -w /workspace \
+            liquibase/liquibase:latest \
+            --classpath=/workspace/lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url="${{ secrets.DB_URL }}" \
+            --username="${{ secrets.DB_USER }}" --password="${{ secrets.DB_PASSWORD }}" \
+            update
