@@ -1,0 +1,74 @@
+name: db-ci
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  ci:
+    name: Liquibase migrate + SQL tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ci -d app"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Liquibase CLI
+        uses: liquibase/setup-liquibase@v2
+        with:
+          version: "4.32.0"
+          edition: "community"
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Download PostgreSQL JDBC driver
+        run: |
+          mkdir -p lib
+          curl -L -o lib/postgresql.jar \
+            https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar
+          ls -lh lib/postgresql.jar
+
+      - name: Liquibase validate
+        run: |
+          liquibase \
+            --classpath=lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url=jdbc:postgresql://localhost:5432/app \
+            --username=ci --password=ci \
+            validate
+
+      - name: Liquibase update (apply migrations)
+        run: |
+          liquibase \
+            --classpath=lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url=jdbc:postgresql://localhost:5432/app \
+            --username=ci --password=ci \
+            update
+
+      - name: Run SQL tests
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -e
+          for f in tests/*.sql; do
+            echo "Running $f"
+            psql -h localhost -U ci -d app -v ON_ERROR_STOP=1 -f "$f"
+          done

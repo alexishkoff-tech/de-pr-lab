@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.23.xsd">
+
+  <changeSet id="001-init" author="lab">
+    <sqlFile path="migrations/001_init.sql" relativeToChangelogFile="false"/>
+    <rollback>
+      <sql>DROP TABLE IF EXISTS users;</sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="002-add-email" author="lab">
+    <sqlFile path="migrations/002_add_email.sql" relativeToChangelogFile="false"/>
+    <rollback>
+      <sql>ALTER TABLE users DROP COLUMN IF EXISTS email;</sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
