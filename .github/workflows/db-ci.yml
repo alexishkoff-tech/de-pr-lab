@@ -25,15 +25,20 @@ jobs:
           --health-retries=20
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Install Liquibase CLI
+        uses: liquibase/setup-liquibase@v2
+        with:
+          version: "4.32.0"
+          edition: "community"
 
       - name: Install psql client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Download PostgreSQL JDBC driver (Liquibase 5+ needs it explicitly)
+      - name: Download PostgreSQL JDBC driver
         run: |
           mkdir -p lib
           curl -L -o lib/postgresql.jar \
@@ -41,24 +46,22 @@ jobs:
           ls -lh lib/postgresql.jar
 
       - name: Liquibase validate
-        uses: liquibase/liquibase-action@v4
-        with:
-          operation: validate
-          classpath: lib/postgresql.jar
-          changeLogFile: liquibase/changelog.xml
-          url: jdbc:postgresql://localhost:5432/app
-          username: ci
-          password: ci
+        run: |
+          liquibase \
+            --classpath=lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url=jdbc:postgresql://localhost:5432/app \
+            --username=ci --password=ci \
+            validate
 
       - name: Liquibase update (apply migrations)
-        uses: liquibase/liquibase-action@v4
-        with:
-          operation: update
-          classpath: lib/postgresql.jar
-          changeLogFile: liquibase/changelog.xml
-          url: jdbc:postgresql://localhost:5432/app
-          username: ci
-          password: ci
+        run: |
+          liquibase \
+            --classpath=lib/postgresql.jar \
+            --changeLogFile=liquibase/changelog.xml \
+            --url=jdbc:postgresql://localhost:5432/app \
+            --username=ci --password=ci \
+            update
 
       - name: Run SQL tests
         env:
